@@ -1,0 +1,11 @@
+services:
+  dubbing-bot:
+    image: discord-bot
+    container_name: dubbing-bot
+    environment:
+      - DISCORD_TOKEN=DISCORD-TOKEN
+      - TESTING_GUILD_ID=TESTING-GUILD-ID
+      - MAIN_GUILD_ID=MAIN-GUILD-ID
+      - DABING_ADDRESS=http://ADDRESS-TO-DUBBING-SERVER
+      - DABING_TOKEN=YOUR-TOKEN
+    restart: unless-stopped

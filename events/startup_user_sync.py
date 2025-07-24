@@ -3,36 +3,30 @@ from utils.bot import bot
 from utils.send_to_server import send_to_server
 import os
 import asyncio
-from dotenv import load_dotenv
-
-load_dotenv()
-
-DABING_ADDRESS = os.getenv("DABING_ADDRESS", None)
-DABING_TOKEN = os.getenv("DABING_TOKEN", None)
+from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN, MAIN_GUILD_ID
 
 async def on_ready():
     print(f"✅ Logged in as {bot.user} ({bot.user.id})")
     bot.loop.create_task(sync_users())
 
 async def sync_users():
-    main_guild_id = os.getenv("MAIN_GUILD_ID", None)
-    if main_guild_id is None:
+    if MAIN_GUILD_ID is None:
         return
-    guild = bot.get_guild(int(main_guild_id))
+    guild = bot.get_guild(int(MAIN_GUILD_ID))
     if guild is None:
-        print(f"❌ Guild {int(main_guild_id)} not found in cache, trying to fetch…")
+        print(f"❌ Guild {int(MAIN_GUILD_ID)} not found in cache, trying to fetch…")
         try:
             # Will give you guild metadata, but NOT .members
-            guild = await bot.fetch_guild(int(main_guild_id))
+            guild = await bot.fetch_guild(int(MAIN_GUILD_ID))
             print(f"ℹ️  Fetched guild '{guild.name}' via API, but it has no .members.")
         except discord.NotFound:
-            print(f"❌ Bot is not in guild {int(main_guild_id)}")
+            print(f"❌ Bot is not in guild {int(MAIN_GUILD_ID)}")
             return
         except discord.HTTPException as e:
             print(f"❌ Failed to fetch guild: {e}")
             return
         
-    cached_guild = bot.get_guild(int(main_guild_id))
+    cached_guild = bot.get_guild(int(MAIN_GUILD_ID))
     if not cached_guild:
         print("❌ Guild is still not cached, cannot fetch members.")
         return

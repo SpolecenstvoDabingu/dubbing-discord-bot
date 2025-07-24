@@ -1,14 +1,7 @@
 from utils.send_to_server import send_to_server
 import os
-from dotenv import load_dotenv
+from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN, MAIN_GUILD_ID
 import asyncio
-
-load_dotenv()
-
-DABING_ADDRESS = os.getenv("DABING_ADDRESS", None)
-DABING_TOKEN = os.getenv("DABING_TOKEN", None)
-
-MAIN_GUILD_ID = os.getenv("MAIN_GUILD_ID", None)
 
 async def on_member_join(member):
     if MAIN_GUILD_ID is None or member.guild.id != int(MAIN_GUILD_ID):

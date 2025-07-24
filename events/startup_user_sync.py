@@ -42,6 +42,8 @@ async def sync_users():
     output_users = []
 
     for member in members:
+        if member.bot:
+            continue
         output_users.append({
             "id": str(member.id),
             "avatar": member.avatar.url if member.avatar else "https://cdn.discordapp.com/embed/avatars/0.png",

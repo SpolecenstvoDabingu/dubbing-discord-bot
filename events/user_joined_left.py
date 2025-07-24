@@ -13,6 +13,8 @@ MAIN_GUILD_ID = os.getenv("MAIN_GUILD_ID", None)
 async def on_member_join(member):
     if MAIN_GUILD_ID is None or member.guild.id != int(MAIN_GUILD_ID):
         return
+    if member.bot:
+        return
     output_users = [{
         "id": str(member.id),
         "avatar": member.avatar.url if member.avatar else "https://cdn.discordapp.com/embed/avatars/0.png",
@@ -24,6 +26,8 @@ async def on_member_join(member):
 
 async def on_member_remove(member):
     if MAIN_GUILD_ID is None or member.guild.id != int(MAIN_GUILD_ID):
+        return
+    if member.bot:
         return
     output_users = [{
         "id": str(member.id),

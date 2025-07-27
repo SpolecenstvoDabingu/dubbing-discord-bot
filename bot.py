@@ -1,8 +1,8 @@
 import discord, os, asyncio
-from utils.load_cogs import load_cogs
-from utils.load_events import load_events
-from utils.bot import bot
-from utils.enviroment_vars import TESTING_GUILD_ID, TOKEN
+from utils import load_cogs
+from utils import load_events
+from utils import bot
+from utils import TESTING_GUILD_ID, TOKEN
 
 
 @bot.event

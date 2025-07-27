@@ -1,12 +1,12 @@
 import discord, asyncio
 from discord import app_commands
 from discord.ext import commands
-from utils.base_cog import BaseCog
+from utils import BaseCog
 from typing import Literal
-from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN
-from utils.request_get import request_get
-from utils.request_post import request_post
-from utils.bot import bot
+from utils import DABING_ADDRESS, DABING_TOKEN
+from utils import request_get
+from utils import request_post
+from utils import bot
 
 class Notification(BaseCog):
     COG_LABEL = "Dubbing"

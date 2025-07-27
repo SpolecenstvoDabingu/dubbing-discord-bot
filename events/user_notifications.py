@@ -1,11 +1,11 @@
 import discord, os
-from utils.bot import bot
-from utils.send_to_server import send_to_server
-from utils.request_get import request_get
+from utils import bot
+from utils import send_to_server
+from utils import request_get
 import os
 import asyncio
-from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN
-from utils.scheduler import scheduler
+from utils import DABING_ADDRESS, DABING_TOKEN
+from utils import scheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime, timedelta
 

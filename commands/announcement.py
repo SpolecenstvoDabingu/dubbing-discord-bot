@@ -3,10 +3,10 @@
 
 import discord, asyncio
 from discord import app_commands
-from utils.base_cog import BaseCog
+from utils import BaseCog
 from typing import Literal
-from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN
-from utils.request_get import request_get
+from utils import DABING_ADDRESS, DABING_TOKEN
+from utils import request_get
 
 def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
     embed_title = f"🎬 Nové oznámení o {'epizodě' if is_episode else 'scéně'}!"

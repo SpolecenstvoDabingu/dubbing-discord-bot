@@ -1,7 +1,7 @@
 import logging, discord, os
 from discord.ext import commands
 from discord import app_commands
-from utils.enviroment_vars import TESTING_GUILD_ID
+from .enviroment_vars import TESTING_GUILD_ID
 
 log = logging.getLogger("bot")
 

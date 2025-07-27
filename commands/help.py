@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from utils.base_cog import BaseCog
+from utils import BaseCog
 from collections import defaultdict
 
 class HelpPaginator(discord.ui.View):

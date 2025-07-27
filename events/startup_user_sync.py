@@ -1,6 +1,7 @@
 import discord, os
-from utils.bot import bot
-from utils.send_to_server import send_to_server
+from utils import bot
+from utils import send_to_server
+from utils import get_user_data_sync
 import os
 import asyncio
 from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN, MAIN_GUILD_ID
@@ -38,11 +39,7 @@ async def sync_users():
     for member in members:
         if member.bot:
             continue
-        output_users.append({
-            "id": str(member.id),
-            "avatar": member.avatar.url if member.avatar else "https://cdn.discordapp.com/embed/avatars/0.png",
-            "name": str(member.nick or member.name)
-        })
+        output_users.append(get_user_data_sync(member))
 
     url = f"{DABING_ADDRESS}/discord/users/sync?token={DABING_TOKEN}"
     await asyncio.to_thread(send_to_server, url, output_users)

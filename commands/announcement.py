@@ -25,6 +25,9 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
         embed.add_field(name="🔢 Kód", value=data["sxex"], inline=True)
 
     embed.add_field(name="📜 Scénář", value=f"[Klikni zde]({data['script']})", inline=False)
+    
+    if "urls" in data and data["urls"]:
+        embed.add_field(name="🔗 Odkazy", value=data["urls"][:512], inline=False)
 
     if deadline := data.get("deadline"):
         # deadline je předpokládán jako unixový timestamp v sekundách

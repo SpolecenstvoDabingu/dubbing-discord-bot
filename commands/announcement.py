@@ -37,7 +37,10 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
     if data.get("dubbers"):
         dubbers_list = ""
         for d in data["dubbers"]:
-            user_mention = f"<@{d['user_id']}>"
+            if d.get("user_id") is not None:
+                user_mention = f"<@{d['user_id']}>"
+            else:
+                user_mention = "❓"
             dubbers_list += f"• `{d['character_name']}` — {user_mention}\n"
         embed.add_field(name="🎙️ Dabéři", value=dubbers_list, inline=False)
 

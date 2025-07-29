@@ -85,8 +85,7 @@ class Announcement(BaseCog):
                     ephemeral=True
                 )
             else:
-                thread = await channel.create_thread(name=data["name_full"])
-                await thread.send(embed=embed)
+                thread = await channel.create_thread(name=data["name_full"][:100], embed=embed)
                 await self.reply_defer_checked(
                     interaction=interaction,
                     content=f"✅ Oznámení bylo zveřejněno v novém vlákně {thread.mention} v {channel.mention}!",

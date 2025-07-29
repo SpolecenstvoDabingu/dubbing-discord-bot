@@ -14,7 +14,7 @@ class Clear(BaseCog):
         channel = interaction.channel
 
         if not isinstance(channel, discord.TextChannel | discord.Thread):
-            await  self.reply_ephemeral(interaction=interaction, content="This command can only be used in text channels.")
+            await  self.reply_defer_checked(interaction=interaction, content="This command can only be used in text channels.", ephemeral=True)
             return
         
         def check(msg: discord.Message):
@@ -26,13 +26,14 @@ class Clear(BaseCog):
 
         try:
             deleted = await channel.purge(limit=amount or None, check=check)
-            await  self.reply_ephemeral(
+            await  self.reply_defer_checked(
                 interaction=interaction,
                 content=f"Deleted {len(deleted)} message{'s' if len(deleted) > 1 else ''}{f'from {user.mention if user else user_id}' if user or user_id else ''}.",
+                ephemeral=True
             )
         except discord.Forbidden:
-            await  self.reply_ephemeral(interaction=interaction, content="I don't have permission to delete messages here.")
+            await  self.reply_defer_checked(interaction=interaction, content="I don't have permission to delete messages here.", ephemeral=True)
         except discord.HTTPException as e:
-            await  self.reply_ephemeral(interaction=interaction, content=f"Failed to delete messages: {e}")
+            await  self.reply_defer_checked(interaction=interaction, content=f"Failed to delete messages: {e}", ephemeral=True)
 
 setup = Clear.setup

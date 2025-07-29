@@ -9,7 +9,8 @@ class Ping(BaseCog):
     @app_commands.command(name="ping", description="Get the bot's latency.")
     @app_commands.check(BaseCog._owner_only)
     async def ping(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         latency_ms = round(self.bot.latency * 1000)
-        await self.reply_ephemeral(interaction=interaction, content=f"Pong! '{latency_ms} ms'")
+        await self.reply_defer_checked(interaction=interaction, content=f"Pong! '{latency_ms} ms'", ephemeral=True)
 
 setup = Ping.setup

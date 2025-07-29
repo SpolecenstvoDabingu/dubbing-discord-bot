@@ -18,26 +18,27 @@ class BaseCog(commands.Cog):
     def log(self, msg: str, level: int = logging.INFO):
         log.log(level, f"[{self.__class__.__name__}] {msg}")
 
-    async def reply_ephemeral(
+    async def reply_defer_checked(
         self,
         interaction: discord.Interaction,
         content: str | None = None,
         embed: discord.Embed | None = None,
+        ephemeral: bool = False,
         **kwargs,
     ):
-        """Send an ephemeral reply"""
+        """Send reply"""
         if interaction.response.is_done():
             await interaction.followup.send(
                 content=content,
                 embed=embed,
-                ephemeral=True,
+                ephemeral=ephemeral,
                 **kwargs,
             )
         else:
             await interaction.response.send_message(
                 content=content,
                 embed=embed,
-                ephemeral=True,
+                ephemeral=ephemeral,
                 **kwargs,
             )
 
@@ -49,10 +50,11 @@ class BaseCog(commands.Cog):
     ):
         self.log(f"{type(error).__name__}: {error}", logging.ERROR)
 
-        await self.reply_ephemeral(
+        await self.reply_defer_checked(
             interaction,
             "Something went wrong while executing that command. "
-            "The incident has been logged."
+            "The incident has been logged.",
+            ephemeral=True
         )
 
     async def can_run(self, command: app_commands.Command, interaction: discord.Interaction) -> bool:

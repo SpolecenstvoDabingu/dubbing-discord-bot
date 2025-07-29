@@ -53,22 +53,47 @@ class Announcement(BaseCog):
     @app_commands.command(name="announcement", description="Send announcement embed of specified episode/scene")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(type="Select whether it's an episode or scene")
-    async def announcement(self, interaction: discord.Interaction, type: Literal["episode", "scene"], id: int):
+    async def announcement(self, interaction: discord.Interaction, type: Literal["episode", "scene"], id: int, channel: discord.ForumChannel = None):
+        await interaction.response.defer(ephemeral=True)
         url = f"{DABING_ADDRESS}/discord/commands/announcement/{type}/{id}?token={DABING_TOKEN}"
 
         # Fetch data in background thread
         response = await asyncio.to_thread(request_get, url)
 
+        if not response.ok:
+            await self.reply_defer_checked(interaction=interaction, content="❌ Failed to parse response from server.", ephemeral=True)
+            return
+
         try:
             data = response.json()
         except Exception as e:
-            await interaction.response.send_message(
-                f"❌ Failed to parse response from server.\nError: `{e}`",
-                ephemeral=True
-            )
+            await self.reply_defer_checked(interaction=interaction, content=f"❌ Failed to parse response from server.\nError: `{e}`", ephemeral=True)
             return
 
         embed = build_announcement_embed(data, is_episode=(type == "episode"))
-        await interaction.response.send_message(embed=embed)
+        if channel:
+            if "name_full" not in data:
+                await self.reply_defer_checked(interaction=interaction, content="❌ Missing 'name_full' in data for announcement.", ephemeral=True)
+                return
+            existing_thread = discord.utils.get(channel.threads, name=data["name_full"])
+            if existing_thread:
+                thread = existing_thread
+                await thread.send(embed=embed)
+                await self.reply_defer_checked(
+                    interaction=interaction,
+                    content=f"ℹ️ Oznámení bylo přidáno do existujícího vlákna {thread.mention} v {channel.mention}!",
+                    ephemeral=True
+                )
+            else:
+                thread = await channel.create_thread(name=data["name_full"])
+                await thread.send(embed=embed)
+                await self.reply_defer_checked(
+                    interaction=interaction,
+                    content=f"✅ Oznámení bylo zveřejněno v novém vlákně {thread.mention} v {channel.mention}!",
+                    ephemeral=True
+                )
+            return
+
+        await self.reply_defer_checked(interaction=interaction, embed=embed)
 
 setup = Announcement.setup

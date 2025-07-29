@@ -156,7 +156,7 @@ class Help(BaseCog):
                 commands_by_cog[cog_name].extend(cmds)
 
         if not commands_by_cog:
-            await self.reply_ephemeral(interaction, "No commands available.")
+            await self.reply_defer_checked(interaction=interaction, content="No commands available.", ephemeral=True)
             return
 
         paginator = HelpPaginator(commands_by_cog, interaction, self)

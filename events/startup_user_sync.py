@@ -9,6 +9,12 @@ from utils.enviroment_vars import DABING_ADDRESS, DABING_TOKEN, MAIN_GUILD_ID
 async def on_ready():
     print(f"✅ Logged in as {bot.user} ({bot.user.id})")
     bot.loop.create_task(sync_users())
+    bot.loop.create_task(periodic_sync_user())
+
+async def periodic_sync_user():
+    while True:
+        await asyncio.sleep(3600)
+        await sync_users()
 
 async def sync_users():
     if MAIN_GUILD_ID is None:

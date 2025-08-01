@@ -7,7 +7,7 @@ class Clear(BaseCog):
     COG_LABEL = "Utilities"
 
     @app_commands.command(name="clear", description="Delete messages.")
-    @commands.has_permissions(manage_messages=True)
+    @app_commands.checks.has_permissions(manage_messages=True)
     async def clear(self, interaction: discord.Interaction, user: discord.User = None, user_id: int = None, amount: int | None = None):
         await interaction.response.defer(ephemeral=True)
 

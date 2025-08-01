@@ -2,6 +2,7 @@
 # http://localhost/discord/commands/announcement/scene/1?token=7252fc2f91fa2abfe212c38078146898ba2bf2c455a75fbbc15b99f9077a9377
 
 import discord, asyncio
+from math import ceil
 from discord import app_commands
 from utils import BaseCog
 from typing import Literal
@@ -19,6 +20,9 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
 
     embed.add_field(name="📺 Dabing", value=data["dubbing"], inline=True)
 
+    if "manager" in data and data["manager"]:
+        embed.add_field(name="👨‍💼 Manažer", value=f"<@{data["manager"]}>", inline=True)
+
     if is_episode:
         embed.add_field(name="📚 Série", value=str(data["season"]), inline=True)
         embed.add_field(name="🎞️ Epizoda", value=str(data["episode"]), inline=True)
@@ -35,14 +39,23 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
         embed.add_field(name="⏰ Deadline", value=discord_timestamp, inline=False)
 
     if data.get("dubbers"):
-        dubbers_list = ""
+        dubbers_list = []
         for d in data["dubbers"]:
             if d.get("user_id") is not None:
                 user_mention = f"<@{d['user_id']}>"
             else:
                 user_mention = "❓"
-            dubbers_list += f"• `{d['character_name']}` — {user_mention}\n"
-        embed.add_field(name="🎙️ Dabéři", value=dubbers_list, inline=False)
+            dubbers_list.append(f"• `{d['character_name']}` — {user_mention}")
+        threshold = 10
+        if len(dubbers_list) > threshold:
+            for i in range(ceil(len(dubbers_list) / threshold)):
+                embed.add_field(
+                    name=f"🎙️ Dabéři (část {i + 1})",
+                    value="\n".join(dubbers_list[i * threshold:(i + 1) * threshold]),
+                    inline=True
+                )
+        else:
+            embed.add_field(name="🎙️ Dabéři", value="\n".join(dubbers_list), inline=True)
 
     embed.set_footer(text="Zkontrolujte prosím scénář a nahrajte své repliky!")
     return embed
@@ -81,14 +94,14 @@ class Announcement(BaseCog):
                 await thread.send(embed=embed)
                 await self.reply_defer_checked(
                     interaction=interaction,
-                    content=f"ℹ️ Oznámení bylo přidáno do existujícího vlákna {thread.mention} v {channel.mention}!",
+                    content=f"ℹ️ Oznámení bylo přidáno do existujícího vlákna!",
                     ephemeral=True
                 )
             else:
                 thread = await channel.create_thread(name=data["name_full"][:100], embed=embed)
                 await self.reply_defer_checked(
                     interaction=interaction,
-                    content=f"✅ Oznámení bylo zveřejněno v novém vlákně {thread.mention} v {channel.mention}!",
+                    content=f"✅ Oznámení bylo zveřejněno v novém vlákně!",
                     ephemeral=True
                 )
             return

@@ -51,9 +51,8 @@ class BaseCog(commands.Cog):
         self.log(f"{type(error).__name__}: {error}", logging.ERROR)
 
         await self.reply_defer_checked(
-            interaction,
-            "Something went wrong while executing that command. "
-            "The incident has been logged.",
+            interaction=interaction,
+            content="Something went wrong while executing that command. The incident has been logged.",
             ephemeral=True
         )
 

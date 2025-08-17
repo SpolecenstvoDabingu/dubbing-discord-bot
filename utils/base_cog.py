@@ -50,9 +50,20 @@ class BaseCog(commands.Cog):
     ):
         self.log(f"{type(error).__name__}: {error}", logging.ERROR)
 
+        if isinstance(error, app_commands.MissingPermissions):
+            msg = "You don't have permission to use this command."
+        elif isinstance(error, app_commands.BotMissingPermissions):
+            msg = "I don't have permission to execute this command."
+        elif isinstance(error, (app_commands.MissingRole, app_commands.MissingAnyRole)):
+            msg = "You lack the required role to use this command."
+        elif isinstance(error, app_commands.CommandOnCooldown):
+            msg = f"Command is on cooldown. Try again in {error.retry_after:.1f}s."
+        else:
+            msg = "Something went wrong. The incident has been logged."
+
         await self.reply_defer_checked(
             interaction=interaction,
-            content="Something went wrong while executing that command. The incident has been logged.",
+            content=msg,
             ephemeral=True
         )
 

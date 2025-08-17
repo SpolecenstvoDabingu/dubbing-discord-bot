@@ -25,20 +25,24 @@ class Create(BaseCog):
             '╿・୨🎙️୧・obsazení',
             '╿・୨📌୧・nástěnka˚₊'
         ]
-        created_text_channels = []
+        all_channels = []
         for name in text_channels:
             channel = await guild.create_text_channel(
                 name=name,
                 category=category
             )
-            created_text_channels.append(channel)
+            all_channels.append(channel)
 
-        discussion_channel = await guild.create_forum(
-            name='╰・୨🎭୧・projekty',
-            category=category,
-        )
-
-        all_channels = created_text_channels + [discussion_channel]
+        discussion_channels = [
+            '╿・୨📝୧・casting',
+            '╰・୨🎭୧・projekty'
+        ]
+        for name in discussion_channels:
+            channel = await guild.create_forum(
+                name=name,
+                category=category,
+            )
+            all_channels.append(channel)
 
         for i, ch in enumerate(all_channels):
             await ch.edit(position=i)

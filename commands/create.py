@@ -20,6 +20,7 @@ class Create(BaseCog):
         category = await guild.create_category(name=f'愛 ．．{full_name.title()}  ⸝ 🌩．．')
 
         text_channels = [
+            f'╿・୨💬୧・{short_name.lower()}-chat',
             f'╿・୨🔔୧・{short_name.lower()}-oznámení',
             '╿・୨🎙️୧・obsazení',
             '╿・୨📌୧・nástěnka˚₊'

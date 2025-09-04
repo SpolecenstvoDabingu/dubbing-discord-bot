@@ -3,13 +3,13 @@
 
 import discord, asyncio
 from math import ceil
-from discord import app_commands
+from discord import app_commands, Object
 from utils import BaseCog
 from typing import Literal
 from utils import DABING_ADDRESS, DABING_TOKEN
 from utils import request_get
 
-def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
+def build_announcement_embed(data: dict, is_episode: bool) -> tuple[discord.Embed, list]:
     embed_title = f"🎬 Nové oznámení o {'epizodě' if is_episode else 'scéně'}!"
     embed = discord.Embed(
         title=embed_title,
@@ -20,8 +20,10 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
 
     embed.add_field(name="📺 Dabing", value=data["dubbing"], inline=True)
 
+    dubbers_ids = []
     if "manager" in data and data["manager"]:
         embed.add_field(name="👨‍💼 Manažer", value=f"<@{data["manager"]}>", inline=True)
+        dubbers_ids.append(data["manager"])
 
     if is_episode:
         embed.add_field(name="📚 Série", value=str(data["season"]), inline=True)
@@ -42,6 +44,7 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
         dubbers_list = []
         for d in data["dubbers"]:
             if d.get("user_id") is not None:
+                dubbers_ids.append(d['user_id'])
                 user_mention = f"<@{d['user_id']}>"
             else:
                 user_mention = "❓"
@@ -58,7 +61,20 @@ def build_announcement_embed(data: dict, is_episode: bool) -> discord.Embed:
             embed.add_field(name="🎙️ Dabéři", value="\n".join(dubbers_list), inline=True)
 
     embed.set_footer(text="Zkontrolujte prosím scénář a nahrajte své repliky!")
-    return embed
+    return embed, dubbers_ids
+
+async def add_users_to_thread(thread: discord.Thread, dubbers_ids: list) -> list[str]:
+    errors = []
+    for dubber_id in dubbers_ids:
+        try:
+            await thread.add_user(Object(id=int(dubber_id)))
+        except discord.Forbidden:
+            errors.append(f"❌ I don’t have permission to add <@{dubber_id}>")
+        except discord.HTTPException:
+            errors.append(f"⚠️ Failed to add <@{dubber_id}>")
+        except Exception as e:
+            errors.append(f"⚠️ Failed to add <@{dubber_id}>. Error: {e}")
+    return errors
 
 class Announcement(BaseCog):
     COG_LABEL = "Dubbing"
@@ -83,29 +99,48 @@ class Announcement(BaseCog):
             await self.reply_defer_checked(interaction=interaction, content=f"❌ Failed to parse response from server.\nError: `{e}`", ephemeral=True)
             return
 
-        embed = build_announcement_embed(data, is_episode=(type == "episode"))
-        if channel:
-            if "name_full" not in data:
-                await self.reply_defer_checked(interaction=interaction, content="❌ Missing 'name_full' in data for announcement.", ephemeral=True)
+        try:
+            embed, dubbers_ids = build_announcement_embed(data, is_episode=(type == "episode"))
+            if channel:
+                if "name_full" not in data:
+                    await self.reply_defer_checked(interaction=interaction, content="❌ Missing 'name_full' in data for announcement.", ephemeral=True)
+                    return
+                existing_thread = discord.utils.get(channel.threads, name=data["name_full"])
+                if existing_thread:
+                    await existing_thread.send(embed=embed)
+                    errors = await add_users_to_thread(thread=existing_thread, dubbers_ids=dubbers_ids)
+                    await self.reply_defer_checked(
+                        interaction=interaction,
+                        content=f"ℹ️ Oznámení bylo přidáno do existujícího vlákna!" + ((f"\nWith errors:\n" + ("\n".join(errors))) if len(errors) > 0 else ""),
+                        ephemeral=True
+                    )
+                    res_text = f"ℹ️ Oznámení bylo přidáno do existujícího vlákna!"
+                else:
+                    new_thread = await channel.create_thread(name=data["name_full"][:100], embed=embed)
+                    errors = await add_users_to_thread(thread=new_thread.thread, dubbers_ids=dubbers_ids)
+                    await self.reply_defer_checked(
+                        interaction=interaction,
+                        content=f"✅ Oznámení bylo zveřejněno v novém vlákně!" + ((f"\nWith errors:\n" + ("\n".join(errors))) if len(errors) > 0 else ""),
+                        ephemeral=True
+                    )
                 return
-            existing_thread = discord.utils.get(channel.threads, name=data["name_full"])
-            if existing_thread:
-                thread = existing_thread
-                await thread.send(embed=embed)
-                await self.reply_defer_checked(
-                    interaction=interaction,
-                    content=f"ℹ️ Oznámení bylo přidáno do existujícího vlákna!",
-                    ephemeral=True
-                )
+            
+            errors = []
+            if isinstance(interaction.channel, discord.Thread):
+                await interaction.channel.send(embed=embed)
+                errors = await add_users_to_thread(thread=interaction.channel, dubbers_ids=dubbers_ids)
+            elif isinstance(interaction.channel, discord.TextChannel):
+                await interaction.channel.send(embed=embed)
             else:
-                thread = await channel.create_thread(name=data["name_full"][:100], embed=embed)
-                await self.reply_defer_checked(
-                    interaction=interaction,
-                    content=f"✅ Oznámení bylo zveřejněno v novém vlákně!",
-                    ephemeral=True
-                )
+                await self.reply_defer_checked(interaction, content="This channel isn't text", ephemeral=True)
+            await self.reply_defer_checked(
+                interaction=interaction,
+                content=f"ℹ️ Oznámení bylo odesláno!" + ((f"\nWith errors:\n" + ("\n".join(errors))) if len(errors) > 0 else ""),
+                ephemeral=True
+            )
+                
+        except Exception as e:
+            await self.reply_defer_checked(interaction=interaction, content=f"❌ Failed to perform command.\nError: `{e}`", ephemeral=True)
             return
-
-        await self.reply_defer_checked(interaction=interaction, embed=embed)
 
 setup = Announcement.setup

@@ -1,28 +1,25 @@
-# /announcement type:scene id:1
-# http://localhost/discord/commands/announcement/scene/1?token=7252fc2f91fa2abfe212c38078146898ba2bf2c455a75fbbc15b99f9077a9377
-
 import discord, asyncio
 from math import ceil
 from discord import app_commands, Object
-from utils import BaseCog
 from typing import Literal
-from utils import DABING_ADDRESS, DABING_TOKEN
-from utils import request_get
+from utils import BaseCog, DABING_ADDRESS, DABING_TOKEN, request_get
 
+
+# ---------------- Embed & Thread Helpers ----------------
 def build_announcement_embed(data: dict, is_episode: bool) -> tuple[discord.Embed, list]:
     embed_title = f"🎬 Nové oznámení o {'epizodě' if is_episode else 'scéně'}!"
     embed = discord.Embed(
         title=embed_title,
         description=data["name_full"],
         color=discord.Color.blue(),
-        url=data.get("full_info")  # Přidání odkazu na detail
+        url=data.get("full_info")
     )
 
     embed.add_field(name="📺 Dabing", value=data["dubbing"], inline=True)
 
     dubbers_ids = []
     if "manager" in data and data["manager"]:
-        embed.add_field(name="👨‍💼 Manažer", value=f"<@{data["manager"]}>", inline=True)
+        embed.add_field(name="👨‍💼 Manažer", value=f"<@{data['manager']}>", inline=True)
         dubbers_ids.append(data["manager"])
 
     if is_episode:
@@ -31,12 +28,11 @@ def build_announcement_embed(data: dict, is_episode: bool) -> tuple[discord.Embe
         embed.add_field(name="🔢 Kód", value=data["sxex"], inline=True)
 
     embed.add_field(name="📜 Scénář", value=f"[Klikni zde]({data['script']})", inline=False)
-    
+
     if "urls" in data and data["urls"]:
         embed.add_field(name="🔗 Odkazy", value=data["urls"][:512], inline=False)
 
     if deadline := data.get("deadline"):
-        # deadline je předpokládán jako unixový timestamp v sekundách
         discord_timestamp = f"<t:{int(deadline)}:R>"
         embed.add_field(name="⏰ Deadline", value=discord_timestamp, inline=False)
 
@@ -63,6 +59,7 @@ def build_announcement_embed(data: dict, is_episode: bool) -> tuple[discord.Embe
     embed.set_footer(text="Zkontrolujte prosím scénář a nahrajte své repliky!")
     return embed, dubbers_ids
 
+
 async def add_users_to_thread(thread: discord.Thread, dubbers_ids: list) -> list[str]:
     errors = []
     for dubber_id in dubbers_ids:
@@ -76,71 +73,140 @@ async def add_users_to_thread(thread: discord.Thread, dubbers_ids: list) -> list
             errors.append(f"⚠️ Failed to add <@{dubber_id}>. Error: {e}")
     return errors
 
+
+# ---------------- Step 1: Modal for Category ----------------
+class CategoryModal(discord.ui.Modal, title="Select Category"):
+    category_name = discord.ui.TextInput(
+        label="Category Name",
+        placeholder="Type part of the category name (leave empty to use current channel)",
+        required=False
+    )
+
+    def __init__(self, parent_cog, type_, id_):
+        super().__init__()
+        self.parent_cog = parent_cog
+        self.type_ = type_
+        self.id_ = id_
+
+    async def on_submit(self, interaction: discord.Interaction):
+        name = self.category_name.value.strip()
+        if not name:
+            await send_announcement(interaction, self.parent_cog, self.type_, self.id_, None)
+            return
+
+        # Find matching categories
+        categories = [
+            cat for cat in interaction.guild.categories
+            if name.lower() in cat.name.lower()
+        ]
+
+        if not categories:
+            # No match → ask again
+            await interaction.response.send_modal(CategoryModal(self.parent_cog, self.type_, self.id_))
+            return
+
+        # Collect channels from all matched categories
+        channels = []
+        for cat in categories:
+            channels.extend(
+                ch for ch in cat.channels if isinstance(ch, discord.ForumChannel)
+            )
+
+        if not channels:
+            await send_announcement(interaction, self.parent_cog, self.type_, self.id_, None)
+            return
+
+        # Limit to 25
+        view = ChannelSelectView(self.parent_cog, self.type_, self.id_, channels[:25])
+        cats_str = ", ".join(f"<#{cat.id}>" for cat in categories)
+
+        if interaction.response.is_done():
+            await interaction.followup.send(f"Select a channel from categories: **{cats_str}**", view=view, ephemeral=True)
+        else:
+            await interaction.response.send_message(f"Select a channel from categories: **{cats_str}**", view=view, ephemeral=True)
+
+
+# ---------------- Step 2: Dropdown for Channels ----------------
+class ChannelSelect(discord.ui.Select):
+    def __init__(self, parent_cog, type_, id_, channels):
+        self.parent_cog = parent_cog
+        self.type_ = type_
+        self.id_ = id_
+        options = [discord.SelectOption(label=ch.name[:100], value=str(ch.id), description=str(ch.category)) for ch in channels]
+        super().__init__(placeholder="Choose a channel...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        target_channel = interaction.guild.get_channel(int(self.values[0]))
+        if not target_channel:
+            await interaction.response.send_message("❌ Channel not found.", ephemeral=True)
+            return
+        await send_announcement(interaction, self.parent_cog, self.type_, self.id_, target_channel)
+
+
+class ChannelSelectView(discord.ui.View):
+    def __init__(self, parent_cog, type_, id_, channels):
+        super().__init__(timeout=60)
+        self.add_item(ChannelSelect(parent_cog, type_, id_, channels))
+
+
+# ---------------- Send Announcement Function ----------------
+async def send_announcement(interaction, parent_cog, type_, id_, target_channel):
+    target_channel = target_channel or interaction.channel
+    await interaction.response.defer(ephemeral=True)
+
+    url = f"{DABING_ADDRESS}/discord/commands/announcement/{type_}/{id_}?token={DABING_TOKEN}"
+    response = await asyncio.to_thread(request_get, url)
+    if not response.ok:
+        await parent_cog.reply_defer_checked(interaction, "❌ Failed to fetch data.", ephemeral=True)
+        return
+
+    try:
+        data = response.json()
+    except Exception as e:
+        await parent_cog.reply_defer_checked(interaction, f"❌ JSON parse error: `{e}`", ephemeral=True)
+        return
+
+    embed, dubbers_ids = build_announcement_embed(data, is_episode=(type_ == "episode"))
+    errors = []
+
+    try:
+        if isinstance(target_channel, discord.ForumChannel):
+            existing_thread = discord.utils.get(target_channel.threads, name=data.get("name_full","announcement"))
+            if existing_thread:
+                await existing_thread.send(embed=embed)
+                errors = await add_users_to_thread(existing_thread, dubbers_ids)
+            else:
+                new_thread = await target_channel.create_thread(name=data.get("name_full","announcement")[:100], embed=embed)
+                errors = await add_users_to_thread(new_thread.thread, dubbers_ids)
+        else:
+            await target_channel.send(embed=embed)
+    except Exception as e:
+        await parent_cog.reply_defer_checked(interaction, f"❌ Failed to send embed: {e}", ephemeral=True)
+        return
+
+    msg = f"✅ Announcement sent to <#{target_channel.id}>!"
+    if errors:
+        msg += "\nWith errors:\n" + "\n".join(errors)
+    await interaction.followup.send(msg, ephemeral=True)
+
+
+# ---------------- Cog ----------------
 class Announcement(BaseCog):
     COG_LABEL = "Dubbing"
 
     @app_commands.command(name="announcement", description="Send announcement embed of specified episode/scene")
     @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.describe(type="Select whether it's an episode or scene")
-    async def announcement(self, interaction: discord.Interaction, type: Literal["episode", "scene"], id: int, channel: discord.ForumChannel = None):
-        await interaction.response.defer(ephemeral=True)
-        url = f"{DABING_ADDRESS}/discord/commands/announcement/{type}/{id}?token={DABING_TOKEN}"
+    async def announcement(
+        self,
+        interaction: discord.Interaction,
+        type: Literal["episode", "scene"],
+        id: int,
+        channel: discord.ForumChannel | discord.TextChannel = None
+    ):
+        if channel is None and not interaction.response.is_done():
+            await interaction.response.send_modal(CategoryModal(self, type, id))
+        else:
+            await send_announcement(interaction, self, type, id, channel)
 
-        # Fetch data in background thread
-        response = await asyncio.to_thread(request_get, url)
-
-        if not response.ok:
-            await self.reply_defer_checked(interaction=interaction, content="❌ Failed to parse response from server.", ephemeral=True)
-            return
-
-        try:
-            data = response.json()
-        except Exception as e:
-            await self.reply_defer_checked(interaction=interaction, content=f"❌ Failed to parse response from server.\nError: `{e}`", ephemeral=True)
-            return
-
-        try:
-            embed, dubbers_ids = build_announcement_embed(data, is_episode=(type == "episode"))
-            if channel:
-                if "name_full" not in data:
-                    await self.reply_defer_checked(interaction=interaction, content="❌ Missing 'name_full' in data for announcement.", ephemeral=True)
-                    return
-                existing_thread = discord.utils.get(channel.threads, name=data["name_full"])
-                if existing_thread:
-                    await existing_thread.send(embed=embed)
-                    errors = await add_users_to_thread(thread=existing_thread, dubbers_ids=dubbers_ids)
-                    await self.reply_defer_checked(
-                        interaction=interaction,
-                        content=f"ℹ️ Oznámení bylo přidáno do existujícího vlákna!" + ((f"\nWith errors:\n" + ("\n".join(errors))) if len(errors) > 0 else ""),
-                        ephemeral=True
-                    )
-                    res_text = f"ℹ️ Oznámení bylo přidáno do existujícího vlákna!"
-                else:
-                    new_thread = await channel.create_thread(name=data["name_full"][:100], embed=embed)
-                    errors = await add_users_to_thread(thread=new_thread.thread, dubbers_ids=dubbers_ids)
-                    await self.reply_defer_checked(
-                        interaction=interaction,
-                        content=f"✅ Oznámení bylo zveřejněno v novém vlákně!" + ((f"\nWith errors:\n" + ("\n".join(errors))) if len(errors) > 0 else ""),
-                        ephemeral=True
-                    )
-                return
-            
-            errors = []
-            if isinstance(interaction.channel, discord.Thread):
-                await interaction.channel.send(embed=embed)
-                errors = await add_users_to_thread(thread=interaction.channel, dubbers_ids=dubbers_ids)
-            elif isinstance(interaction.channel, discord.TextChannel):
-                await interaction.channel.send(embed=embed)
-            else:
-                await self.reply_defer_checked(interaction, content="This channel isn't text", ephemeral=True)
-            await self.reply_defer_checked(
-                interaction=interaction,
-                content=f"ℹ️ Oznámení bylo odesláno!" + ((f"\nWith errors:\n" + ("\n".join(errors))) if len(errors) > 0 else ""),
-                ephemeral=True
-            )
-                
-        except Exception as e:
-            await self.reply_defer_checked(interaction=interaction, content=f"❌ Failed to perform command.\nError: `{e}`", ephemeral=True)
-            return
 
 setup = Announcement.setup

@@ -1,4 +1,4 @@
-import discord, asyncio
+import discord, asyncio, io, aiohttp
 from math import ceil
 from discord import app_commands, Object
 from typing import Literal
@@ -176,7 +176,36 @@ async def send_announcement(interaction, parent_cog, type_, id_, target_channel)
                 await existing_thread.send(embed=embed)
                 errors = await add_users_to_thread(existing_thread, dubbers_ids)
             else:
-                new_thread = await target_channel.create_thread(name=data.get("name_full","announcement")[:100], embed=embed)
+                file = None
+                if cover_url := data.get("cover"):
+                    try:
+                        # Download the cover image
+                        import aiohttp
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(cover_url) as resp:
+                                if resp.status == 200:
+                                    img_bytes = await resp.read()
+                                    file = discord.File(
+                                        io.BytesIO(img_bytes),
+                                        filename="cover.png"
+                                    )
+                                    embed.set_image(url="attachment://cover.png")
+                    except Exception as e:
+                        await interaction.followup.send(f"⚠️ Could not load cover image: {e}", ephemeral=True)
+
+                if file:
+                    new_thread = await target_channel.create_thread(
+                        name=data.get("name_full", "announcement")[:100],
+                        content=None,
+                        embed=embed,
+                        file=file
+                    )
+                else:
+                    new_thread = await target_channel.create_thread(
+                        name=data.get("name_full", "announcement")[:100],
+                        embed=embed
+                    )
+
                 errors = await add_users_to_thread(new_thread.thread, dubbers_ids)
         else:
             await target_channel.send(embed=embed)

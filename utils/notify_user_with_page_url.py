@@ -1,10 +1,10 @@
 import discord
-from utils.enviroment_vars import DABING_ADDRESS, TRAINING_CHANNEL_ID
+from utils.enviroment_vars import DABING_ADDRESS_EXTERNAL, TRAINING_CHANNEL_ID
 from utils.exceptions import DabbingURLNotDefined, TrainingChannelNotDefined
 
 async def send_welcome_message(member: discord.Member):
     try:
-        if DABING_ADDRESS is None:
+        if DABING_ADDRESS_EXTERNAL is None:
             raise DabbingURLNotDefined
         if TRAINING_CHANNEL_ID is None:
             raise TrainingChannelNotDefined
@@ -13,7 +13,7 @@ async def send_welcome_message(member: discord.Member):
             title=f"Vítej na serveru, {member.name}! 🎉",
             description=(
                 "Jsme rádi, že jsi se připojil/a k našemu serveru.\n\n"
-                f"➡️ **Přihlas se na stránku projektů:** [Klikni zde]({DABING_ADDRESS})\n"
+                f"➡️ **Přihlas se na stránku projektů:** [Klikni zde]({DABING_ADDRESS_EXTERNAL})\n"
                 f"➡️ **Nezapomeň si naplánovat školení na serveru:** <#{int(TRAINING_CHANNEL_ID)}>"
             ),
             color=0x00AE86

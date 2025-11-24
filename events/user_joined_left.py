@@ -1,6 +1,6 @@
 from utils import send_to_server
 import os
-from utils import DABING_ADDRESS, DABING_TOKEN, MAIN_GUILD_ID, get_user_data_sync
+from utils import DABING_ADDRESS, DABING_TOKEN, MAIN_GUILD_ID, get_user_data_sync, send_welcome_message
 import asyncio
 
 async def on_member_join(member):
@@ -11,6 +11,7 @@ async def on_member_join(member):
     output_users = [get_user_data_sync(member)]
     url = f"{DABING_ADDRESS}/discord/users/add?token={DABING_TOKEN}"
     await asyncio.to_thread(send_to_server, url, output_users)
+    await send_welcome_message(member)
 
 
 async def on_member_remove(member):

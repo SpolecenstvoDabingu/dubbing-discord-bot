@@ -8,6 +8,7 @@ from .request_post import request_post
 from .scheduler import scheduler
 from .send_to_server import send_to_server
 from .get_user_data_sync import get_user_data_sync
+from .notify_user_with_page_url import send_welcome_message
 
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "scheduler",
     "send_to_server",
     "get_user_data_sync",
+    "send_welcome_message"
 ]

@@ -10,3 +10,4 @@ DABING_ADDRESS = os.getenv("DABING_ADDRESS", None)
 DABING_TOKEN = os.getenv("DABING_TOKEN", None)
 
 MAIN_GUILD_ID = os.getenv("MAIN_GUILD_ID", None)
+TRAINING_CHANNEL_ID = os.getenv("TRAINING_CHANNEL_ID", None)
